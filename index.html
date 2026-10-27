@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="hi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Ho gaya tera</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,700;1,9..144,500&family=Syne:wght@500;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="glow" aria-hidden="true"></div>
+    <header class="top">
+      <p class="mark">SHUT UP PEOPLE</p>
+      <p class="live-pill" id="pill">MIC OFF</p>
+    </header>
+
+    <main class="stage">
+      <section class="hero">
+        <p class="kicker">Hindi first. Patience last.</p>
+        <h1>Ho gaya <em>tera</em></h1>
+        <p class="lede">
+          The second a voice shows up, it talks over them. Three lines. No
+          debate.
+        </p>
+
+        <div class="wave" id="wave" aria-hidden="true"></div>
+        <p class="status" id="status">Mic is off. Start listening when you’re ready.</p>
+        <button type="button" id="toggle">Start listening</button>
+        <p class="hint">Allow the mic. Headphones keep it from hearing itself.</p>
+      </section>
+
+      <ol class="script" id="script">
+        <li class="line" data-i="0">
+          <span class="n">01</span>
+          <div>
+            <p class="lang">हिंदी</p>
+            <p class="said">Ho gaya tera</p>
+          </div>
+        </li>
+        <li class="line" data-i="1">
+          <span class="n">02</span>
+          <div>
+            <p class="lang">हिंदी</p>
+            <p class="said">bas kar yaar</p>
+          </div>
+        </li>
+        <li class="line" data-i="2">
+          <span class="n">03</span>
+          <div>
+            <p class="lang">English</p>
+            <p class="said">someone take this human away from me</p>
+          </div>
+        </li>
+      </ol>
+    </main>
+    <script src="app.js"></script>
+  </body>
+</html>
