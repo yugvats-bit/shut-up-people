@@ -1,13 +1,14 @@
 :root {
-  --bg: #0c0b0a;
-  --ink: #f4efe6;
-  --muted: #9a9184;
-  --faint: #5f584f;
-  --line: #262019;
-  --accent: #ff4d2e;
-  --ok: #7dffb3;
-  --display: "Fraunces", Georgia, serif;
-  --sans: "Syne", ui-sans-serif, system-ui, sans-serif;
+  --bg: #1d1311;
+  --panel: #241816;
+  --ink: #e9dfcf;
+  --dim: #8e8173;
+  --faint: #4a3a34;
+  --rule: #3a2b27;
+  --hot: #e3583a;
+  --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --dot: "Doto", "IBM Plex Mono", monospace;
+  --deva: "Noto Sans Devanagari", "Kohinoor Devanagari", sans-serif;
 }
 
 * {
@@ -21,286 +22,378 @@ body {
 }
 
 body {
-  font-family: var(--sans);
-  background: var(--bg);
+  background-color: var(--bg);
+  /* fine diagnostic grid */
+  background-image:
+    linear-gradient(var(--rule) 1px, transparent 1px),
+    linear-gradient(90deg, var(--rule) 1px, transparent 1px);
+  background-size: 24px 24px;
+  background-position: -1px -1px;
   color: var(--ink);
-  overflow-x: hidden;
+  font-family: var(--mono);
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  -webkit-font-smoothing: antialiased;
 }
 
-/* Warm glow behind everything; heats up while it's talking. */
-.glow {
-  position: fixed;
-  inset: -20% -10% auto;
-  height: 70vh;
-  background: radial-gradient(closest-side, #3a1c14 0%, transparent 70%);
-  opacity: 0.7;
-  pointer-events: none;
-  transition: opacity 300ms ease, filter 300ms ease;
+p {
+  margin: 0;
 }
 
-body.live .glow {
-  background: radial-gradient(closest-side, #12301f 0%, transparent 70%);
+.shell {
+  max-width: 62rem;
+  margin: 0 auto;
+  padding: 0 16px 24px;
 }
 
-body.hot .glow,
-body.talking .glow {
-  background: radial-gradient(closest-side, #5a1d10 0%, transparent 70%);
-  opacity: 1;
-}
-
-/* Header */
-.top {
-  position: relative;
+/* top + bottom bars */
+.bar {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  max-width: 64rem;
-  margin: 0 auto;
-  padding: 1.25rem 1.5rem;
+  gap: 12px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--ink);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
 }
 
-.mark {
-  margin: 0;
-  font-weight: 800;
-  font-size: 0.75rem;
-  letter-spacing: 0.24em;
+.bar.foot {
+  border-bottom: 0;
+  border-top: 1px solid var(--ink);
+  color: var(--dim);
+  font-weight: 500;
+  margin-top: 28px;
+  flex-wrap: wrap;
 }
 
-.live-pill {
-  margin: 0;
-  padding: 0.4rem 0.75rem;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  font-weight: 700;
-  font-size: 0.65rem;
-  letter-spacing: 0.18em;
-  color: var(--muted);
-  display: flex;
+#clock {
+  color: var(--dim);
+}
+
+.rec {
+  display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 8px;
 }
 
-.live-pill::before {
-  content: "";
-  width: 0.45rem;
-  height: 0.45rem;
-  border-radius: 50%;
+.rec i {
+  width: 8px;
+  height: 8px;
   background: var(--faint);
 }
 
-.live-pill[data-state="live"] {
-  color: var(--ok);
-  border-color: rgba(125, 255, 179, 0.3);
+body[data-state="armed"] .rec i,
+body[data-state="hearing"] .rec i,
+body[data-state="rearm"] .rec i {
+  background: var(--ink);
 }
 
-.live-pill[data-state="live"]::before {
-  background: var(--ok);
-  box-shadow: 0 0 10px var(--ok);
+body[data-state="speaking"] .rec i {
+  background: var(--hot);
+  animation: blink 0.5s steps(2) infinite;
 }
 
-.live-pill[data-state="talking"] {
-  color: var(--accent);
-  border-color: rgba(255, 77, 46, 0.4);
-}
-
-.live-pill[data-state="talking"]::before {
-  background: var(--accent);
-  animation: blink 0.6s steps(2) infinite;
-}
-
-/* Layout */
-.stage {
-  position: relative;
-  max-width: 64rem;
-  margin: 0 auto;
-  padding: 2rem 1.5rem 4rem;
+/* layout */
+.grid {
   display: grid;
-  gap: 3rem;
+  gap: 28px;
+  padding-top: 28px;
 }
 
 @media (min-width: 52rem) {
-  .stage {
-    grid-template-columns: 1.15fr 1fr;
-    align-items: center;
-    padding-top: 4rem;
+  .grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 40px;
   }
 }
 
-/* Hero */
-.kicker {
-  margin: 0 0 1rem;
-  font-size: 0.75rem;
-  font-weight: 700;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  color: var(--accent);
+.col {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  min-width: 0;
+}
+
+/* bracket-corner frame */
+.frame {
+  position: relative;
+  padding: 18px 20px;
+  background: var(--panel);
+}
+
+.frame::before,
+.frame::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border: 1px solid var(--ink);
+  -webkit-mask:
+    linear-gradient(#000 0 0) top left / 22px 22px no-repeat,
+    linear-gradient(#000 0 0) top right / 22px 22px no-repeat,
+    linear-gradient(#000 0 0) bottom left / 22px 22px no-repeat,
+    linear-gradient(#000 0 0) bottom right / 22px 22px no-repeat;
+  mask:
+    linear-gradient(#000 0 0) top left / 22px 22px no-repeat,
+    linear-gradient(#000 0 0) top right / 22px 22px no-repeat,
+    linear-gradient(#000 0 0) bottom left / 22px 22px no-repeat,
+    linear-gradient(#000 0 0) bottom right / 22px 22px no-repeat;
+  border-radius: 6px;
+}
+
+.frame::after {
+  display: none;
+}
+
+.frame-head,
+.frame-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  color: var(--dim);
+}
+
+.frame-foot {
+  align-items: flex-end;
+  margin-top: 18px;
+}
+
+.sq {
+  width: 12px;
+  height: 12px;
+  border: 1px solid var(--ink);
+  background: repeating-linear-gradient(0deg, var(--ink) 0 1px, transparent 1px 3px);
+}
+
+.sq.solid {
+  background: var(--ink);
+}
+
+body[data-state="speaking"] .sq.solid {
+  background: var(--hot);
+  border-color: var(--hot);
 }
 
 h1 {
-  margin: 0 0 1.25rem;
-  font-family: var(--display);
-  font-weight: 700;
-  font-size: clamp(3rem, 11vw, 5.75rem);
-  line-height: 0.92;
-  letter-spacing: -0.02em;
+  margin: 22px 0 10px;
+  font-family: var(--dot);
+  font-weight: 900;
+  font-size: clamp(3.2rem, 13vw, 5.2rem);
+  line-height: 0.88;
+  letter-spacing: 0.02em;
 }
 
-h1 em {
-  font-weight: 500;
-  font-style: italic;
-  color: var(--accent);
+body[data-state="speaking"] h1 {
+  color: var(--hot);
 }
 
-.lede {
-  margin: 0 0 2rem;
-  max-width: 26rem;
-  font-family: var(--display);
-  font-size: 1.1rem;
-  line-height: 1.45;
-  color: var(--muted);
+.sub {
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  color: var(--dim);
 }
 
-/* Waveform (bars are added by app.js) */
+/* section labels like VP// */
+.label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  color: var(--dim);
+  padding-bottom: 8px;
+  margin-bottom: 10px;
+  border-bottom: 1px solid var(--rule);
+}
+
+/* dot-matrix waveform */
 .wave {
-  display: flex;
+  display: block;
+  width: 100%;
+  height: 96px;
+}
+
+/* bar readouts */
+.meters {
+  display: grid;
+  gap: 8px;
+}
+
+.meter {
+  display: grid;
+  grid-template-columns: 6.5rem 1fr 3.2rem;
   align-items: center;
-  gap: 4px;
-  height: 3.5rem;
-  margin: 0 0 1.25rem;
+  gap: 10px;
+  font-size: 12px;
 }
 
-.wave span {
-  flex: 1;
-  max-width: 6px;
+.track {
+  height: 12px;
+  border: 1px solid var(--dim);
+  padding: 1px;
+}
+
+.fill {
+  display: block;
   height: 100%;
-  border-radius: 99px;
-  background: var(--faint);
-  transform: scaleY(0.08);
-  transition: transform 70ms linear, background 200ms ease;
+  width: 0%;
+  background: var(--ink);
+  transition: width 90ms linear;
 }
 
-body.live .wave span {
-  background: var(--ok);
+#mPatience {
+  width: 100%;
 }
 
-body.hot .wave span,
-body.talking .wave span {
-  background: var(--accent);
+.pct {
+  text-align: right;
+  color: var(--dim);
 }
 
 .status {
   min-height: 1.5em;
-  margin: 0 0 1.5rem;
-  font-size: 0.95rem;
-  font-weight: 500;
+  font-size: 13px;
 }
 
-body.talking .status {
-  color: var(--accent);
-  font-family: var(--display);
-  font-style: italic;
-  font-size: 1.15rem;
+body[data-state="speaking"] .status {
+  color: var(--hot);
 }
 
 button {
   appearance: none;
-  border: 0;
-  border-radius: 999px;
-  padding: 0.95rem 1.6rem;
-  font: 700 0.95rem/1 var(--sans);
+  align-self: flex-start;
+  border: 1px solid var(--ink);
+  border-radius: 0;
+  padding: 14px 18px;
   background: var(--ink);
   color: var(--bg);
+  font: 600 13px/1 var(--mono);
+  letter-spacing: 0.14em;
   cursor: pointer;
 }
 
 button:hover {
-  filter: brightness(0.92);
+  background: transparent;
+  color: var(--ink);
 }
 
 button:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--hot);
   outline-offset: 3px;
 }
 
 button.stop {
-  background: var(--accent);
-  color: #fff;
+  background: transparent;
+  color: var(--ink);
+}
+
+button.stop:hover {
+  background: var(--ink);
+  color: var(--bg);
 }
 
 .hint {
-  margin: 1rem 0 0;
-  font-size: 0.8rem;
-  color: var(--faint);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: var(--dim);
 }
 
-/* The three lines */
-.script {
+/* script */
+.script,
+.log {
   list-style: none;
   margin: 0;
   padding: 0;
-  border-top: 1px solid var(--line);
 }
 
 .line {
   display: grid;
-  grid-template-columns: 2.5rem 1fr;
-  gap: 0.75rem;
-  padding: 1.25rem 0;
-  border-bottom: 1px solid var(--line);
-  opacity: 0.55;
-  transition: opacity 200ms ease, transform 200ms ease;
+  grid-template-columns: 2.4rem 1fr auto;
+  gap: 10px;
+  align-items: start;
+  padding: 12px 10px;
+  border-bottom: 1px dashed var(--rule);
+  color: var(--dim);
+  transition: background 120ms, color 120ms;
 }
 
 .line .n {
+  font-weight: 600;
+}
+
+.said {
+  font-family: var(--dot);
   font-weight: 700;
-  font-size: 0.75rem;
-  letter-spacing: 0.1em;
-  color: var(--faint);
-  padding-top: 0.35rem;
+  font-size: 1.45rem;
+  line-height: 1.05;
+  letter-spacing: 0.03em;
 }
 
-.line .lang {
-  margin: 0 0 0.3rem;
-  font-size: 0.75rem;
-  color: var(--muted);
+.deva {
+  margin-top: 4px;
+  font-family: var(--deva);
+  font-size: 14px;
+  letter-spacing: 0;
 }
 
-.line .said {
-  margin: 0;
-  font-family: var(--display);
-  font-size: clamp(1.3rem, 3.6vw, 1.75rem);
-  line-height: 1.15;
+.tag {
+  font-size: 10px;
+  border: 1px solid currentColor;
+  padding: 2px 5px;
 }
 
-/* The line it will say next time you talk. */
 .line.next {
-  opacity: 0.85;
+  color: var(--ink);
 }
 
 .line.next .n::after {
-  content: "next";
-  display: block;
-  margin-top: 0.3rem;
-  font-size: 0.6rem;
-  font-weight: 500;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--ok);
+  content: "▸";
+  margin-left: 4px;
 }
 
+/* inverse highlight while it's being said */
 .line.active {
-  opacity: 1;
-  transform: translateX(0.5rem);
+  background: var(--ink);
+  color: var(--bg);
 }
 
-.line.active .n,
-.line.active .said {
-  color: var(--accent);
+.line.done {
+  color: var(--faint);
+}
+
+.line.done .said {
+  text-decoration: line-through;
+  text-decoration-thickness: 2px;
+}
+
+/* log */
+.log li {
+  padding: 3px 0;
+  font-size: 12px;
+  color: var(--dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.log li:first-child {
+  color: var(--ink);
+}
+
+.readout pre {
+  margin: 0;
+  font: 500 15px/1.35 var(--mono);
+  letter-spacing: 0.06em;
+  color: var(--ink);
+  overflow: hidden;
 }
 
 @keyframes blink {
   to {
-    opacity: 0.2;
+    opacity: 0.15;
   }
 }
 
