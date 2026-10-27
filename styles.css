@@ -326,8 +326,8 @@ button.stop:hover {
 
 .said {
   font-family: var(--dot);
-  font-weight: 700;
-  font-size: 1.45rem;
+  font-weight: 900;
+  font-size: 1.55rem;
   line-height: 1.05;
   letter-spacing: 0.03em;
 }
