@@ -272,6 +272,22 @@ button.stop {
   line-height: 1.15;
 }
 
+/* The line it will say next time you talk. */
+.line.next {
+  opacity: 0.85;
+}
+
+.line.next .n::after {
+  content: "next";
+  display: block;
+  margin-top: 0.3rem;
+  font-size: 0.6rem;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ok);
+}
+
 .line.active {
   opacity: 1;
   transform: translateX(0.5rem);

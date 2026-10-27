@@ -4,6 +4,9 @@ const SPEAK_MS = 120;
 const THRESHOLD = 0.045;
 // Number of bars in the waveform.
 const BARS = 28;
+// Quiet gap after each line before it starts listening again (ms),
+// so the tail of its own voice can't set off the next line.
+const COOLDOWN_MS = 700;
 
 // What gets said out loud. Hindi lines are spoken from Devanagari so the
 // Hindi voice pronounces them properly; the page shows the romanised text.
@@ -29,6 +32,13 @@ let listening = false;
 let busy = false;
 let speakingMs = 0;
 let lastTs = 0;
+let cooldownUntil = 0;
+
+function idleStatus() {
+  return nextLine === 0
+    ? "Listening. Go on, try saying something."
+    : "Waiting for you to talk again…";
+}
 
 // Build the waveform bars once.
 const bars = Array.from({ length: BARS }, () => {
@@ -74,19 +84,28 @@ function speak(line) {
   });
 }
 
+// Which line to say next. Each interruption says one line, then waits for
+// the human to speak again before moving on. After the last line it loops.
+let nextLine = 0;
+
+function markNext() {
+  lineEls.forEach((el, n) => el.classList.toggle("next", listening && n === nextLine));
+}
+
 async function shutThemUp() {
   busy = true;
+  const i = nextLine;
   document.body.classList.add("talking");
   setPill("TALKING OVER YOU", "talking");
+  lineEls.forEach((el) => el.classList.remove("next"));
+  setActiveLine(i);
+  setStatus(lineEls[i].querySelector(".said").textContent);
+
   window.speechSynthesis.cancel();
+  await speak(LINES[i]);
 
-  for (let i = 0; i < LINES.length; i++) {
-    if (!listening) break;
-    setActiveLine(i);
-    setStatus(lineEls[i].querySelector(".said").textContent);
-    await speak(LINES[i]);
-  }
-
+  nextLine = (i + 1) % LINES.length;
+  cooldownUntil = performance.now() + COOLDOWN_MS;
   setActiveLine(-1);
   document.body.classList.remove("talking");
   busy = false;
@@ -94,7 +113,8 @@ async function shutThemUp() {
   lastTs = 0;
   if (listening) {
     setPill("LISTENING", "live");
-    setStatus("Listening. Go on, try saying something.");
+    setStatus(idleStatus());
+    markNext();
   }
 }
 
@@ -125,7 +145,7 @@ function tick(ts) {
   const level = micLevel();
   drawWave(level, ts);
 
-  if (!busy) {
+  if (!busy && ts >= cooldownUntil) {
     if (level > THRESHOLD) {
       speakingMs += dt;
       document.body.classList.add("hot");
@@ -133,7 +153,7 @@ function tick(ts) {
     } else {
       speakingMs = 0;
       document.body.classList.remove("hot");
-      setStatus("Listening. Go on, try saying something.");
+      setStatus(idleStatus());
     }
 
     if (speakingMs >= SPEAK_MS) {
@@ -163,6 +183,9 @@ async function start() {
   busy = false;
   speakingMs = 0;
   lastTs = 0;
+  nextLine = 0;
+  cooldownUntil = 0;
+  markNext();
   toggle.textContent = "Stop listening";
   toggle.classList.add("stop");
   document.body.classList.add("live");
@@ -184,6 +207,8 @@ function stop() {
 
   drawWave(0, 0);
   setActiveLine(-1);
+  nextLine = 0;
+  markNext();
   document.body.classList.remove("live", "hot", "talking");
   toggle.textContent = "Start listening";
   toggle.classList.remove("stop");
