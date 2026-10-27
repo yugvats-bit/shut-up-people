@@ -1,44 +1,104 @@
-const SPEAK_MS = 80;
-const LINE = "Shut up. Don't bother me right now.";
+// How long a voice has to keep going before we cut in (ms).
+const SPEAK_MS = 120;
+// Mic level that counts as a voice.
+const THRESHOLD = 0.045;
+// Number of bars in the waveform.
+const BARS = 28;
+
+// What gets said out loud. Hindi lines are spoken from Devanagari so the
+// Hindi voice pronounces them properly; the page shows the romanised text.
+const LINES = [
+  { speak: "हो गया तेरा", lang: "hi-IN", rate: 1.0, pitch: 0.8 },
+  { speak: "बस कर यार", lang: "hi-IN", rate: 1.0, pitch: 0.8 },
+  { speak: "someone take this human away from me", lang: "en-IN", rate: 1.0, pitch: 0.75 },
+];
 
 const toggle = document.getElementById("toggle");
 const statusEl = document.getElementById("status");
-const timerEl = document.getElementById("timer");
-const meterEl = document.getElementById("meter");
-const orb = document.getElementById("orb");
+const pill = document.getElementById("pill");
+const wave = document.getElementById("wave");
+const lineEls = [...document.querySelectorAll("#script .line")];
 
 let stream = null;
 let audioCtx = null;
 let analyser = null;
 let source = null;
+let samples = null;
 let raf = 0;
 let listening = false;
+let busy = false;
 let speakingMs = 0;
 let lastTs = 0;
-let busy = false;
+
+// Build the waveform bars once.
+const bars = Array.from({ length: BARS }, () => {
+  const bar = document.createElement("span");
+  wave.appendChild(bar);
+  return bar;
+});
 
 function setStatus(text) {
   statusEl.textContent = text;
 }
 
-function setTimer() {
-  timerEl.textContent = busy ? "talking over you" : "any voice gets shut down";
+function setPill(text, state) {
+  pill.textContent = text;
+  pill.dataset.state = state;
 }
 
-function sayLine() {
+function setActiveLine(i) {
+  lineEls.forEach((el, n) => el.classList.toggle("active", n === i));
+}
+
+// Pick the best installed voice for a language, falling back to its base language.
+function voiceFor(lang) {
+  const voices = window.speechSynthesis.getVoices();
+  return (
+    voices.find((v) => v.lang === lang) ||
+    voices.find((v) => v.lang.replace("_", "-").startsWith(lang.split("-")[0])) ||
+    null
+  );
+}
+
+function speak(line) {
   return new Promise((resolve) => {
-    window.speechSynthesis.cancel();
-    const utter = new SpeechSynthesisUtterance(LINE);
-    utter.rate = 0.95;
-    utter.pitch = 0.7;
+    const utter = new SpeechSynthesisUtterance(line.speak);
+    utter.lang = line.lang;
+    const voice = voiceFor(line.lang);
+    if (voice) utter.voice = voice;
+    utter.rate = line.rate;
+    utter.pitch = line.pitch;
     utter.onend = resolve;
     utter.onerror = resolve;
     window.speechSynthesis.speak(utter);
   });
 }
 
-function levelFromAnalyser() {
-  const samples = new Uint8Array(analyser.fftSize);
+async function shutThemUp() {
+  busy = true;
+  document.body.classList.add("talking");
+  setPill("TALKING OVER YOU", "talking");
+  window.speechSynthesis.cancel();
+
+  for (let i = 0; i < LINES.length; i++) {
+    if (!listening) break;
+    setActiveLine(i);
+    setStatus(lineEls[i].querySelector(".said").textContent);
+    await speak(LINES[i]);
+  }
+
+  setActiveLine(-1);
+  document.body.classList.remove("talking");
+  busy = false;
+  speakingMs = 0;
+  lastTs = 0;
+  if (listening) {
+    setPill("LISTENING", "live");
+    setStatus("Listening. Go on, try saying something.");
+  }
+}
+
+function micLevel() {
   analyser.getByteTimeDomainData(samples);
   let sum = 0;
   for (const s of samples) {
@@ -48,44 +108,39 @@ function levelFromAnalyser() {
   return Math.sqrt(sum / samples.length);
 }
 
+function drawWave(level, ts) {
+  const amp = Math.min(level * 14, 1);
+  bars.forEach((bar, i) => {
+    const wobble = 0.55 + 0.45 * Math.sin(ts / 140 + i * 0.7);
+    const h = 0.08 + amp * wobble;
+    bar.style.transform = `scaleY(${Math.min(h, 1).toFixed(3)})`;
+  });
+}
+
 function tick(ts) {
   if (!listening) return;
   const dt = lastTs ? Math.min(ts - lastTs, 80) : 16;
   lastTs = ts;
 
-  const level = levelFromAnalyser();
-  const shown = Math.min(100, level * 900);
-  meterEl.style.width = `${shown}%`;
-  orb.style.setProperty("--level", String(0.9 + Math.min(level * 6, 0.45)));
-  orb.querySelector(".ring").style.transform = `scale(${0.86 + Math.min(level * 2.2, 0.28)})`;
+  const level = micLevel();
+  drawWave(level, ts);
 
-  const voiced = !busy && level > 0.045;
-
-  if (voiced) {
-    speakingMs += dt;
-    orb.classList.add("hot", "live");
-    orb.classList.remove("talking");
-    setStatus("Hearing you…");
-  } else if (!busy) {
-    speakingMs = 0;
-    orb.classList.remove("hot");
-    setStatus("Listening. Try talking.");
-  }
-
-  setTimer();
-
-  if (!busy && speakingMs >= SPEAK_MS) {
-    speakingMs = 0;
-    busy = true;
-    orb.classList.add("talking", "hot");
-    setStatus("Shut up. Don’t bother me right now.");
-    sayLine().then(() => {
-      busy = false;
-      lastTs = 0;
+  if (!busy) {
+    if (level > THRESHOLD) {
+      speakingMs += dt;
+      document.body.classList.add("hot");
+      setStatus("Hearing you…");
+    } else {
       speakingMs = 0;
-      if (listening) setStatus("Listening. Try talking.");
-      orb.classList.remove("talking", "hot");
-    });
+      document.body.classList.remove("hot");
+      setStatus("Listening. Go on, try saying something.");
+    }
+
+    if (speakingMs >= SPEAK_MS) {
+      speakingMs = 0;
+      document.body.classList.remove("hot");
+      shutThemUp();
+    }
   }
 
   raf = requestAnimationFrame(tick);
@@ -100,18 +155,19 @@ async function start() {
   await audioCtx.resume();
   analyser = audioCtx.createAnalyser();
   analyser.fftSize = 2048;
+  samples = new Uint8Array(analyser.fftSize);
   source = audioCtx.createMediaStreamSource(stream);
   source.connect(analyser);
 
   listening = true;
+  busy = false;
   speakingMs = 0;
   lastTs = 0;
-  busy = false;
   toggle.textContent = "Stop listening";
   toggle.classList.add("stop");
-  orb.classList.add("live");
-  setStatus("Listening. Try talking.");
-  setTimer();
+  document.body.classList.add("live");
+  setPill("LISTENING", "live");
+  setStatus("Listening. Go on, try saying something.");
   raf = requestAnimationFrame(tick);
 }
 
@@ -123,29 +179,36 @@ function stop() {
   if (source) source.disconnect();
   if (audioCtx) audioCtx.close();
   if (stream) stream.getTracks().forEach((t) => t.stop());
-  stream = null;
-  audioCtx = null;
-  analyser = null;
-  source = null;
+  stream = audioCtx = analyser = source = samples = null;
   speakingMs = 0;
-  meterEl.style.width = "0%";
-  orb.classList.remove("live", "hot", "talking");
+
+  drawWave(0, 0);
+  setActiveLine(-1);
+  document.body.classList.remove("live", "hot", "talking");
   toggle.textContent = "Start listening";
   toggle.classList.remove("stop");
-  setStatus("Mic is off");
-  setTimer();
+  setPill("MIC OFF", "off");
+  setStatus("Mic is off. Start listening when you’re ready.");
 }
 
 toggle.addEventListener("click", async () => {
+  if (listening) {
+    stop();
+    return;
+  }
   try {
-    if (listening) {
-      stop();
-      return;
-    }
     setStatus("Asking for the microphone…");
     await start();
   } catch (err) {
-    setStatus("Microphone was blocked. Allow it and try again.");
     console.error(err);
+    stop();
+    setStatus("Microphone was blocked. Allow it and try again.");
   }
 });
+
+// Some browsers load voices late; touching the list early warms it up.
+window.speechSynthesis.getVoices();
+window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
+
+drawWave(0, 0);
+setPill("MIC OFF", "off");
